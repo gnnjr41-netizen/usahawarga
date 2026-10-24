@@ -50,8 +50,7 @@
   <script>
     // Ganti hanya bila URL /exec berubah (bila Anda membuat "New deployment", bukan "New version").
     var EXEC = 'https://script.google.com/macros/s/AKfycbwWKoj7VA1_n9DLAoTCc0IRxYyUpLx14fo9Yv-13m7jHWOLTXAJzQ2pFhjBzXswRF71/exec';
-    var BATAS_TUNGGU = 10000; // ms sebelum tombol "Buka formulir" muncul
-
+    
     // Teruskan ?cabang=BOJA dari link pendek ke formulir
     var cabang = '';
     try { cabang = new URLSearchParams(location.search).get('cabang') || ''; } catch (e) {}
@@ -60,15 +59,35 @@
 
     var app = document.getElementById('app');
     var muat = document.getElementById('muat');
-    var siap = false;
+    var tampil = false;
     document.getElementById('langsung').href = src;
 
-    // Formulir mengirim 'pasarkoe:siap' begitu tampil. Hanya menutup layar loading, jadi aman diterima dari mana pun.
-    window.addEventListener('message', function (e) {
-      if (e.data === 'pasarkoe:siap') { siap = true; muat.classList.remove('lama'); muat.classList.add('selesai'); }
+    function tampilkan() {
+      if (tampil) return;
+      tampil = true;
+      muat.classList.remove('lama');
+      muat.classList.add('selesai');
+    }
+
+    // Cara 1 (tercepat): formulir versi baru mengirim sinyal 'pasarkoe:siap' saat tampil.
+    window.addEventListener('message', function (e) { if (e.data === 'pasarkoe:siap') tampilkan(); });
+
+    // Cara 2 (tidak perlu sinyal): halaman Apps Script yang berhasil dimuat selalu berisi bingkai formulir.
+    // Halaman error/diblokir tidak punya bingkai, jadi layar loading tetap dan tombol cadangan muncul.
+    app.addEventListener('load', function () {
+      var mulai = Date.now();
+      (function cek() {
+        if (tampil) return;
+        var n = 0;
+        try { n = app.contentWindow ? app.contentWindow.length : 0; } catch (e) { n = 0; }
+        if (n > 0) return tampilkan();
+        if (Date.now() - mulai < 10000) setTimeout(cek, 250);
+      })();
     });
+
     app.src = src;
-    setTimeout(function () { if (!siap) muat.classList.add('lama'); }, BATAS_TUNGGU);
+    // Tombol "Buka formulir" hanya muncul bila formulir benar-benar belum tampil setelah 12 detik
+    setTimeout(function () { if (!tampil) muat.classList.add('lama'); }, 12000);
   </script>
 </body>
 </html>
