@@ -1,45 +1,74 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>USAHA WARGA</title>
-  <link rel="icon" href="https://i.imgur.com/uvKEWIZ.png" />
-  <style>
-    html, body {
-      margin: 0;
-      padding: 0;
-      width: 100%;
-      height: 100%;
-      background-color: #eee;
-      overflow: hidden; /* Mencegah scroll ganda */
-    }
-
-    .iframe-container {
-      width: 100%;
-      height: 100dvh; /* Menggunakan dvh agar pas di mobile browser */
-      overflow: hidden;
-    }
-
-    iframe {
-      display: block;
-      width: 100%;
-      height: 100%;
-      border: none;
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#145A3A">
+<title>PasarKoe — Pendataan Usaha Warga</title>
+<!-- Pratinjau saat link dibagikan di WhatsApp -->
+<meta name="description" content="Daftarkan usaha Anda ke PasarKoe langsung dari HP. Sekitar 5 menit.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="PasarKoe — Pendataan Usaha Warga">
+<meta property="og:description" content="Daftarkan usaha Anda ke PasarKoe langsung dari HP. Sekitar 5 menit.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23145A3A'/%3E%3Crect x='7' y='15' width='18' height='11' rx='2' fill='%23fff'/%3E%3Cpath d='M5 11 8 6h16l3 5v1a3 3 0 0 1-5.5 1 3 3 0 0 1-5.5 0 3 3 0 0 1-5.5 0A3 3 0 0 1 5 12z' fill='%23F0B323'/%3E%3C/svg%3E">
+<style>
+  html, body { margin: 0; height: 100%; background: #F2F5F1; overflow: hidden; }
+  #app { position: fixed; inset: 0; width: 100%; height: 100%; border: 0; display: block; }
+  .muat {
+    position: fixed; inset: 0; z-index: 2; background: #F2F5F1;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+    font: 500 17px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: #1B2620;
+    text-align: center; padding: 24px; transition: opacity .3s;
+  }
+  .muat.selesai { opacity: 0; pointer-events: none; }
+  .spin { width: 44px; height: 44px; border-radius: 50%; border: 5px solid #E5F0E9; border-top-color: #145A3A; animation: putar .9s linear infinite; }
+  .lambat { display: none; flex-direction: column; align-items: center; gap: 12px; max-width: 320px; }
+  .muat.lama .lambat { display: flex; }
+  .muat.lama .spin, .muat.lama .teks-awal { display: none; }
+  .lambat b { font-size: 19px; }
+  .lambat p { margin: 0; color: #4D5C54; font-size: 16px; }
+  .lambat a { display: block; width: 100%; box-sizing: border-box; padding: 16px 20px; border-radius: 14px; background: #145A3A; color: #fff; text-decoration: none; font-weight: 600; font-size: 18px; }
+  .lambat a:focus-visible { outline: 3px solid #1B2620; outline-offset: 2px; }
+  @keyframes putar { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .spin { animation-duration: 3s; } }
+</style>
 </head>
 <body>
-  <div class="iframe-container">
-    <iframe
-      id="app"
-      src="https://script.google.com/macros/s/AKfycbwWKoj7VA1_n9DLAoTCc0IRxYyUpLx14fo9Yv-13m7jHWOLTXAJzQ2pFhjBzXswRF71/exec"
-      scrolling="yes"
-      allowfullscreen="true"
-      webkitallowfullscreen="true"
-      mozallowfullscreen="true"
-      allow="fullscreen; camera; microphone; display-capture; geolocation;">
-    </iframe>
+  <div class="muat" id="muat" role="status" aria-live="polite">
+    <div class="spin" aria-hidden="true"></div>
+    <div class="teks-awal">Membuka formulir PasarKoe…</div>
+    <div class="lambat">
+      <b>Formulir belum terbuka</b>
+      <p>Mungkin sinyal sedang lemah. Tekan tombol di bawah untuk membuka formulir langsung.</p>
+      <a id="langsung" href="#" target="_top">Buka formulir</a>
+    </div>
   </div>
+
+  <iframe id="app" title="Formulir Pendataan Usaha Warga PasarKoe"
+          allow="geolocation; camera; clipboard-write"></iframe>
+
+  <script>
+    // Ganti hanya bila URL /exec berubah (bila Anda membuat "New deployment", bukan "New version").
+    var EXEC = 'https://script.google.com/macros/s/AKfycbwWKoj7VA1_n9DLAoTCc0IRxYyUpLx14fo9Yv-13m7jHWOLTXAJzQ2pFhjBzXswRF71/exec';
+    var BATAS_TUNGGU = 10000; // ms sebelum tombol "Buka formulir" muncul
+
+    // Teruskan ?cabang=BOJA dari link pendek ke formulir
+    var cabang = '';
+    try { cabang = new URLSearchParams(location.search).get('cabang') || ''; } catch (e) {}
+    cabang = cabang.replace(/[^A-Za-z0-9_-]/g, '').slice(0, 20);
+    var src = EXEC + (cabang ? '?cabang=' + encodeURIComponent(cabang) : '');
+
+    var app = document.getElementById('app');
+    var muat = document.getElementById('muat');
+    var siap = false;
+    document.getElementById('langsung').href = src;
+
+    // Formulir mengirim 'pasarkoe:siap' begitu tampil. Hanya menutup layar loading, jadi aman diterima dari mana pun.
+    window.addEventListener('message', function (e) {
+      if (e.data === 'pasarkoe:siap') { siap = true; muat.classList.remove('lama'); muat.classList.add('selesai'); }
+    });
+    app.src = src;
+    setTimeout(function () { if (!siap) muat.classList.add('lama'); }, BATAS_TUNGGU);
+  </script>
 </body>
 </html>
