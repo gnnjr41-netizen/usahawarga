@@ -44,50 +44,53 @@
     </div>
   </div>
 
-  <iframe id="app" title="Formulir Pendataan Usaha Warga PasarKoe"
-          allow="geolocation; camera; clipboard-write"></iframe>
-
   <script>
-    // Ganti hanya bila URL /exec berubah (bila Anda membuat "New deployment", bukan "New version").
+    // URL Web App Google Apps Script. Ganti hanya jika URL /exec berubah.
     var EXEC = 'https://script.google.com/macros/s/AKfycbwWKoj7VA1_n9DLAoTCc0IRxYyUpLx14fo9Yv-13m7jHWOLTXAJzQ2pFhjBzXswRF71/exec';
-    
-    // Teruskan ?cabang=BOJA dari link pendek ke formulir
-    var cabang = '';
-    try { cabang = new URLSearchParams(location.search).get('cabang') || ''; } catch (e) {}
-    cabang = cabang.replace(/[^A-Za-z0-9_-]/g, '').slice(0, 20);
-    var src = EXEC + (cabang ? '?cabang=' + encodeURIComponent(cabang) : '');
 
-    var app = document.getElementById('app');
+    // Teruskan parameter cabang dari link GitHub, misalnya ?cabang=BOJA
+    var cabang = '';
+    try {
+      cabang = new URLSearchParams(window.location.search).get('cabang') || '';
+    } catch (e) {}
+    cabang = cabang.replace(/[^A-Za-z0-9_-]/g, '').slice(0, 20);
+
+    var src = EXEC + (cabang ? '?cabang=' + encodeURIComponent(cabang) : '');
     var muat = document.getElementById('muat');
-    var tampil = false;
+    var sudahTampil = false;
+
+    // Buat iframe setelah URL siap agar event load tidak tertangkap dari about:blank.
+    var app = document.createElement('iframe');
+    app.id = 'app';
+    app.title = 'Formulir Pendataan Usaha Warga PasarKoe';
+    app.setAttribute('allow', 'geolocation; camera; clipboard-write');
+
+    // Tombol cadangan selalu mengarah langsung ke formulir Apps Script.
     document.getElementById('langsung').href = src;
 
-    function tampilkan() {
-      if (tampil) return;
-      tampil = true;
-      muat.classList.remove('lama');
+    function tampilkanFormulir() {
+      if (sudahTampil) return;
+      sudahTampil = true;
       muat.classList.add('selesai');
+      window.setTimeout(function () {
+        if (muat && muat.parentNode) muat.parentNode.removeChild(muat);
+      }, 400);
     }
 
-    // Cara 1 (tercepat): formulir versi baru mengirim sinyal 'pasarkoe:siap' saat tampil.
-    window.addEventListener('message', function (e) { if (e.data === 'pasarkoe:siap') tampilkan(); });
-
-    // Cara 2 (tidak perlu sinyal): halaman Apps Script yang berhasil dimuat selalu berisi bingkai formulir.
-    // Halaman error/diblokir tidak punya bingkai, jadi layar loading tetap dan tombol cadangan muncul.
+    // Jangan membaca contentWindow/contentDocument karena Apps Script berbeda domain.
+    // Event load adalah penanda yang tepat untuk menutup layar pembuka.
     app.addEventListener('load', function () {
-      var mulai = Date.now();
-      (function cek() {
-        if (tampil) return;
-        var n = 0;
-        try { n = app.contentWindow ? app.contentWindow.length : 0; } catch (e) { n = 0; }
-        if (n > 0) return tampilkan();
-        if (Date.now() - mulai < 10000) setTimeout(cek, 250);
-      })();
-    });
+      tampilkanFormulir();
+    }, { once: true });
 
+    // Muat formulir setelah event listener dipasang.
     app.src = src;
-    // Tombol "Buka formulir" hanya muncul bila formulir benar-benar belum tampil setelah 12 detik
-    setTimeout(function () { if (!tampil) muat.classList.add('lama'); }, 12000);
+    document.body.appendChild(app);
+
+    // Jika jaringan sangat lambat, tampilkan tombol untuk membuka formulir langsung.
+    window.setTimeout(function () {
+      if (!sudahTampil) muat.classList.add('lama');
+    }, 15000);
   </script>
 </body>
 </html>
